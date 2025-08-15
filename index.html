@@ -259,14 +259,11 @@
 
             const gameData = gameDoc.data();
             
-            // Adiciona o jogador 2 se houver espaço
             if (Object.keys(gameData.players).length < 2 && !gameData.players[currentUser.uid]) {
                  await updateDoc(gameRef, {
-                    [`players.${currentUser.uid}`]: { bombsHit: 0, isEliminated: false, missesTurns: 0, ready: false }
+                    [`players.${currentUser.uid}`]: { bombsHit: 0, isEliminated: false, missesTurns: 0, ready: false },
+                    status: 'placing'
                 });
-                // *** CORREÇÃO APLICADA AQUI ***
-                // Se o jogo agora tem 2 jogadores, muda o status para 'placing'
-                await updateDoc(gameRef, { status: 'placing' });
             }
 
             lobby.classList.add('hidden');
@@ -276,13 +273,11 @@
                 navigator.clipboard.writeText(gameId).then(() => showToast('ID copiado para a área de transferência!'));
             };
 
-            // Observa mudanças no jogo
-            if(gameUnsubscribe) gameUnsubscribe(); // Cancela a inscrição anterior se houver
+            if(gameUnsubscribe) gameUnsubscribe();
             gameUnsubscribe = onSnapshot(gameRef, (doc) => {
                 if(doc.exists()){
                     renderGame(doc.data());
                 } else {
-                    // O jogo foi deletado ou não existe mais
                     showToast("O jogo foi encerrado.");
                     window.location.reload();
                 }
@@ -297,14 +292,10 @@
             const player1Id = playerIds[0];
             const player2Id = playerIds[1];
 
-            // Atualiza informações dos jogadores
             updatePlayerInfo('1', player1Id, game.players[player1Id], game);
             updatePlayerInfo('2', player2Id, game.players[player2Id], game);
             
-            // Renderiza o tabuleiro
             renderBoard(game);
-
-            // Lógica de status
             handleGameStatus(game);
         }
         
@@ -479,6 +470,14 @@
             } else if (game.status === 'playing') {
                 if (game.currentPlayer !== currentUser.uid) return;
                 if (game.board[index].revealed) return;
+
+                // *** CORREÇÃO APLICADA AQUI ***
+                // Verifica se o jogador está clicando em uma de suas próprias peças
+                const isMyOwnPiece = (playerItems.treasure === index || playerItems.bombs.includes(index));
+                if (isMyOwnPiece) {
+                    showToast("Você não pode atacar suas próprias posições!");
+                    return; // Impede o clique e a jogada
+                }
                 
                 processMove(index, game);
             }
