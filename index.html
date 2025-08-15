@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caça ao Tesouro - Aposta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0e5d1; /* Cor de pergaminho */
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .font-pirate {
+            font-family: 'IM Fell English SC', serif;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            aspect-ratio: 1 / 1;
+            gap: 4px;
+            background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+            background-color: #8B4513; /* Madeira */
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.7);
+        }
+        .board-cell {
+            background-color: #1e90ff; /* Água */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w.org/2000/svg' viewBox='0 0 80 40' width='80' height='40'%3E%3Cpath fill='%233498db' fill-opacity='0.4' d='M0 40h80v-5.5c-11.1-5.4-14.1-11.8-26.5-11.8-13.3 0-13.3 7.8-26.5 7.8S13.3 24.6 0 32V40zM0 0h80v5.5c-11.1 5.4-14.1 11.8-26.5 11.8-13.3 0-13.3-7.8-26.5-7.8S13.3 15.4 0 8V0z'%3E%3C/path%3E%3Cpath fill='%235fadcf' fill-opacity='0.4' d='M0 40h80v-2.5c-11.1-2.7-14.1-5.9-26.5-5.9-13.3 0-13.3 3.9-26.5 3.9S13.3 32.3 0 36V40zM0 0h80v2.5c-11.1 2.7-14.1 5.9-26.5 5.9-13.3 0-13.3-3.9-26.5-3.9S13.3 12.7 0 4V0z'%3E%3C/path%3E%3C/svg%3E");
+            border: 1px solid #00008b;
+            transition: all 0.2s ease-in-out;
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' style='font-size: 24px;'><text y='24'>🏴‍☠️</text></svg>") 16 16, auto;
+        }
+        .board-cell:not(.revealed):hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px gold;
+            z-index: 10;
+        }
+        .board-cell.revealed {
+            background-color: #c2b280; /* Areia */
+            cursor: not-allowed;
+            background-image: none;
+        }
+        .board-cell .icon {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            animation: fadeIn 0.5s;
+        }
+        .placing-treasure { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' style='font-size: 24px;'><text y='24'>💰</text></svg>") 16 16, auto; }
+        .placing-bomb { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' style='font-size: 24px;'><text y='24'>💣</text></svg>") 16 16, auto; }
+        
+        .bomb-hit { animation: shake 0.5s; }
+        .treasure-found { animation: treasure-glow 1.5s infinite; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        @keyframes treasure-glow { 0%, 100% { box-shadow: 0 0 20px 10px gold; } 50% { box-shadow: 0 0 40px 20px gold; } }
+        
+        /* Estilo para o modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: #f0e5d1;
+            padding: 2rem;
+            border-radius: 10px;
+            border: 5px solid #8B4513;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+
+    <div id="app" class="max-w-7xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-5xl md:text-7xl font-pirate text-[#8B4513]">Caça ao Tesouro</h1>
+            <p class="text-lg text-gray-600">Um jogo de sorte, estratégia e pirataria!</p>
+        </header>
+
+        <!-- Lobby -->
+        <div id="lobby" class="text-center bg-white/50 backdrop-blur-sm p-8 rounded-lg shadow-lg max-w-md mx-auto">
+            <h2 class="text-3xl font-pirate mb-4 text-[#8B4513]">Entrar na Taverna</h2>
+            <button id="createGameBtn" class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-4 rounded-lg text-xl mb-4 transition-transform transform hover:scale-105">Criar Novo Jogo</button>
+            <div class="flex items-center my-4">
+                <hr class="flex-grow border-t-2 border-gray-400">
+                <span class="px-4 text-gray-600 font-pirate text-2xl">OU</span>
+                <hr class="flex-grow border-t-2 border-gray-400">
+            </div>
+            <input type="text" id="gameIdInput" placeholder="Cole o ID do Jogo aqui" class="w-full p-3 border-2 border-gray-400 rounded-lg text-center text-lg mb-4 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500">
+            <button id="joinGameBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg text-xl transition-transform transform hover:scale-105">Entrar em um Jogo</button>
+        </div>
+
+        <!-- Game Area -->
+        <div id="gameArea" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Player 1 Info -->
+                <div id="player1Info" class="bg-white/50 backdrop-blur-sm p-6 rounded-lg shadow-lg text-center">
+                    <h3 class="text-2xl font-pirate text-gray-700">Jogador 1</h3>
+                    <p id="player1Id" class="text-xs text-gray-500 break-all mb-2">Aguardando...</p>
+                    <div class="text-3xl">💣 <span id="player1Bombs">0</span> / 3</div>
+                     <p id="player1Status" class="mt-2 font-bold text-lg h-8"></p>
+                </div>
+
+                <!-- Main Board -->
+                <div class="lg:col-span-1">
+                    <div id="gameStatus" class="text-center mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg shadow">
+                        <p id="statusText" class="text-xl font-bold text-yellow-800">Carregando o mapa...</p>
+                        <div id="timer" class="text-2xl font-pirate text-red-600 h-8"></div>
+                    </div>
+                    <div class="game-board" id="board"></div>
+                     <div id="gameIdDisplay" class="mt-4 text-center"></div>
+                </div>
+
+                <!-- Player 2 Info -->
+                <div id="player2Info" class="bg-white/50 backdrop-blur-sm p-6 rounded-lg shadow-lg text-center">
+                    <h3 class="text-2xl font-pirate text-gray-700">Jogador 2</h3>
+                    <p id="player2Id" class="text-xs text-gray-500 break-all mb-2">Aguardando...</p>
+                    <div class="text-3xl">💣 <span id="player2Bombs">0</span> / 3</div>
+                    <p id="player2Status" class="mt-2 font-bold text-lg h-8"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal-backdrop hidden">
+        <div class="modal-content max-w-lg w-full">
+            <h2 id="modalTitle" class="text-4xl font-pirate text-[#8B4513] mb-4"></h2>
+            <p id="modalText" class="text-lg mb-6"></p>
+            <button id="modalButton" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg text-xl">Jogar Novamente</button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // SUA CONFIGURAÇÃO DO FIREBASE VAI AQUI!
+        const firebaseConfig = {
+            apiKey: "AIzaSyCmJGp3aDUdOujiy9nbKCY3xNRc7rk_Bs4",
+            authDomain: "tesouro-pirata.firebaseapp.com",
+            projectId: "tesouro-pirata",
+            storageBucket: "tesouro-pirata.firebasestorage.app",
+            messagingSenderId: "855607253084",
+            appId: "1:855607253084:web:101839a3d349d78c956e99",
+            measurementId: "G-B5D3RTCCVZ"
+        };
+        
+        const appId = "tesouro-pirata"; // Usando o seu projectId como ID da aplicação
+
+        // Inicialização
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Elementos da UI
+        const lobby = document.getElementById('lobby');
+        const gameArea = document.getElementById('gameArea');
+        const boardElement = document.getElementById('board');
+        const statusText = document.getElementById('statusText');
+        const timerElement = document.getElementById('timer');
+        const gameIdDisplay = document.getElementById('gameIdDisplay');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalText = document.getElementById('modalText');
+        
+        // Estado do Jogo
+        let currentUser = null;
+        let gameId = null;
+        let gameUnsubscribe = null;
+        let placementMode = 'treasure'; // 'treasure' ou 'bomb'
+        let treasuresToPlace = 1;
+        let bombsToPlace = 3;
+        let playerItems = { treasure: null, bombs: [] };
+        let turnTimerInterval = null;
+
+        // --- Autenticação ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+            } else {
+                signInAnonymously(auth).catch(error => console.error("Erro no login anônimo:", error));
+            }
+        });
+
+        // --- Lógica do Jogo ---
+
+        // Criar um novo jogo
+        document.getElementById('createGameBtn').onclick = async () => {
+            if (!currentUser) return alert("Aguardando autenticação...");
+            
+            const gameRef = await addDoc(collection(db, "artifacts", appId, "public", "data", "games"), {
+                players: {
+                    [currentUser.uid]: { bombsHit: 0, isEliminated: false, missesTurns: 0, ready: false }
+                },
+                board: Array(100).fill({ revealed: false, content: 'empty', revealedBy: null }),
+                placements: {},
+                currentPlayer: null,
+                status: 'waiting', // waiting, placing, playing, finished
+                winner: null,
+                turnStartTime: null,
+            });
+            
+            joinGame(gameRef.id);
+        };
+
+        // Entrar em um jogo existente
+        document.getElementById('joinGameBtn').onclick = () => {
+            const idToJoin = document.getElementById('gameIdInput').value.trim();
+            if (idToJoin) {
+                joinGame(idToJoin);
+            } else {
+                alert("Por favor, insira um ID de jogo.");
+            }
+        };
+
+        // Função para entrar e observar um jogo
+        async function joinGame(id) {
+            gameId = id;
+            const gameRef = doc(db, "artifacts", appId, "public", "data", "games", gameId);
+            const gameDoc = await getDoc(gameRef);
+
+            if (!gameDoc.exists()) {
+                alert("Jogo não encontrado!");
+                return;
+            }
+
+            const gameData = gameDoc.data();
+            
+            // Adiciona o jogador 2 se houver espaço
+            if (Object.keys(gameData.players).length < 2 && !gameData.players[currentUser.uid]) {
+                 await updateDoc(gameRef, {
+                    [`players.${currentUser.uid}`]: { bombsHit: 0, isEliminated: false, missesTurns: 0, ready: false }
+                });
+            }
+
+            lobby.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            gameIdDisplay.innerHTML = `ID do Jogo: <strong class="cursor-pointer" title="Copiar ID">${gameId}</strong>`;
+            gameIdDisplay.querySelector('strong').onclick = () => {
+                navigator.clipboard.writeText(gameId).then(() => alert('ID copiado!'));
+            };
+
+            // Observa mudanças no jogo
+            gameUnsubscribe = onSnapshot(gameRef, (doc) => {
+                renderGame(doc.data());
+            });
+        }
+
+        // Renderiza o estado do jogo na tela
+        function renderGame(game) {
+            if (!game) return;
+
+            const playerIds = Object.keys(game.players);
+            const player1Id = playerIds[0];
+            const player2Id = playerIds[1];
+
+            // Atualiza informações dos jogadores
+            updatePlayerInfo('1', player1Id, game.players[player1Id], game);
+            updatePlayerInfo('2', player2Id, game.players[player2Id], game);
+            
+            // Renderiza o tabuleiro
+            renderBoard(game);
+
+            // Lógica de status
+            handleGameStatus(game);
+        }
+        
+        function updatePlayerInfo(playerNum, playerId, playerData, game) {
+            const idElement = document.getElementById(`player${playerNum}Id`);
+            const bombsElement = document.getElementById(`player${playerNum}Bombs`);
+            const statusElement = document.getElementById(`player${playerNum}Status`);
+            const infoElement = document.getElementById(`player${playerNum}Info`);
+
+            if (playerId && playerData) {
+                idElement.textContent = `ID: ${playerId.substring(0, 8)}...`;
+                if (playerId === currentUser.uid) idElement.textContent += " (Você)";
+                bombsElement.textContent = playerData.bombsHit;
+
+                let statusMsg = '';
+                if (playerData.isEliminated) {
+                    statusMsg = '❌ Eliminado';
+                    statusElement.classList.add('text-red-600');
+                } else if (playerData.missesTurns > 0) {
+                    statusMsg = `🚫 Perde ${playerData.missesTurns} rodada(s)`;
+                    statusElement.classList.remove('text-green-600', 'text-red-600');
+                } else if (game.currentPlayer === playerId) {
+                    statusMsg = '⚓ Sua vez!';
+                    statusElement.classList.add('text-green-600');
+                } else {
+                     statusElement.classList.remove('text-green-600', 'text-red-600');
+                }
+                statusElement.textContent = statusMsg;
+
+                infoElement.style.borderColor = game.currentPlayer === playerId ? 'gold' : 'transparent';
+                infoElement.style.borderWidth = game.currentPlayer === playerId ? '4px' : '0px';
+
+            } else {
+                idElement.textContent = 'Aguardando oponente...';
+                bombsElement.textContent = '0';
+                statusElement.textContent = '';
+                infoElement.style.borderColor = 'transparent';
+            }
+        }
+
+        function handleGameStatus(game) {
+            clearInterval(turnTimerInterval);
+            timerElement.textContent = '';
+
+            // Verifica se os jogadores existem antes de prosseguir
+            if (!game.players || !game.players[currentUser.uid]) {
+                // Pode acontecer um breve momento em que o jogo é renderizado antes do jogador ser adicionado
+                statusText.textContent = 'Entrando no jogo...';
+                return;
+            }
+
+            switch(game.status) {
+                case 'waiting':
+                    statusText.textContent = 'Aguardando outro pirata se juntar...';
+                    break;
+                case 'placing':
+                    if (game.players[currentUser.uid].ready) {
+                        statusText.textContent = 'Aguardando o oponente posicionar suas peças...';
+                    } else {
+                        statusText.textContent = `Posicione: ${treasuresToPlace} Tesouro(s) 💰 e ${bombsToPlace} Bomba(s) 💣`;
+                    }
+                    break;
+                case 'playing':
+                    const currentPlayerId = game.currentPlayer;
+                    const isMyTurn = currentPlayerId === currentUser.uid;
+                    const currentPlayerName = `Jogador ${Object.keys(game.players).indexOf(currentPlayerId) + 1}`;
+                    statusText.textContent = `Vez de: ${currentPlayerName}${isMyTurn ? ' (Você!)' : ''}`;
+                    startTurnTimer(game);
+                    break;
+                case 'finished':
+                    showEndGameModal(game);
+                    break;
+            }
+        }
+        
+        function startTurnTimer(game) {
+            const activePlayersCount = Object.values(game.players).filter(p => !p.isEliminated).length;
+            const turnDuration = activePlayersCount === 1 ? 5 : 10;
+            const endTime = game.turnStartTime + (turnDuration * 1000);
+
+            turnTimerInterval = setInterval(() => {
+                const remaining = Math.round((endTime - Date.now()) / 1000);
+                if (remaining >= 0) {
+                    timerElement.textContent = `Tempo: ${remaining}s`;
+                } else {
+                    clearInterval(turnTimerInterval);
+                    timerElement.textContent = 'Tempo esgotado!';
+                    if (game.currentPlayer === currentUser.uid) {
+                        switchTurn(game);
+                    }
+                }
+            }, 1000);
+        }
+
+        function renderBoard(game) {
+            boardElement.innerHTML = '';
+            boardElement.classList.remove('placing-treasure', 'placing-bomb');
+            if(game.status === 'placing' && game.players[currentUser.uid] && !game.players[currentUser.uid].ready) {
+                boardElement.classList.add(placementMode === 'treasure' ? 'placing-treasure' : 'placing-bomb');
+            }
+
+            game.board.forEach((cell, index) => {
+                const cellEl = document.createElement('div');
+                cellEl.classList.add('board-cell', 'flex', 'items-center', 'justify-center');
+                if (cell.revealed) {
+                    cellEl.classList.add('revealed');
+                    let icon = '';
+                    // Mostra o ícone se o jogo acabou OU se foi você quem revelou
+                    if (game.status === 'finished' || cell.revealedBy === currentUser.uid) {
+                         if (cell.content === 'treasure') icon = '💰';
+                         if (cell.content === 'bomb') icon = '💣';
+                    }
+                    if(cell.content === 'empty-hit') icon = '🕳️';
+
+                    cellEl.innerHTML = `<div class="icon">${icon}</div>`;
+                }
+                
+                // Adiciona ícones no final do jogo (replay)
+                if (game.status === 'finished' && game.placements) {
+                    for(const playerId in game.placements) {
+                        if(game.placements[playerId].treasure === index) {
+                             cellEl.innerHTML = `<div class="icon">💰</div>`;
+                        }
+                        if(game.placements[playerId].bombs.includes(index)) {
+                             cellEl.innerHTML = `<div class="icon">💣</div>`;
+                        }
+                    }
+                }
+
+                cellEl.dataset.index = index;
+                cellEl.onclick = () => handleCellClick(index, game);
+                boardElement.appendChild(cellEl);
+            });
+        }
+        
+        async function handleCellClick(index, game) {
+            const gameRef = doc(db, "artifacts", appId, "public", "data", "games", gameId);
+
+            if (game.status === 'placing') {
+                if (!game.players[currentUser.uid] || game.players[currentUser.uid].ready) return;
+                
+                const isAlreadyPlaced = playerItems.treasure === index || playerItems.bombs.includes(index);
+                if(isAlreadyPlaced) return; // Impede colocar duas peças no mesmo lugar
+
+                if (placementMode === 'treasure' && treasuresToPlace > 0) {
+                    playerItems.treasure = index;
+                    treasuresToPlace--;
+                    placementMode = 'bomb';
+                } else if (placementMode === 'bomb' && bombsToPlace > 0) {
+                    playerItems.bombs.push(index);
+                    bombsToPlace--;
+                    if (bombsToPlace === 0 && treasuresToPlace > 0) {
+                        placementMode = 'treasure';
+                    }
+                }
+                
+                statusText.textContent = `Posicione: ${treasuresToPlace} Tesouro(s) 💰 e ${bombsToPlace} Bomba(s) 💣`;
+                
+                if (treasuresToPlace === 0 && bombsToPlace === 0) {
+                    await updateDoc(gameRef, {
+                        [`placements.${currentUser.uid}`]: playerItems,
+                        [`players.${currentUser.uid}.ready`]: true
+                    });
+                    
+                    const updatedGameDoc = await getDoc(gameRef);
+                    const updatedGame = updatedGameDoc.data();
+                    const allPlayers = Object.values(updatedGame.players);
+                    if (allPlayers.length === 2 && allPlayers.every(p => p.ready)) {
+                        await updateDoc(gameRef, {
+                            status: 'playing',
+                            currentPlayer: Object.keys(updatedGame.players)[0],
+                            turnStartTime: Date.now()
+                        });
+                    }
+                }
+            } else if (game.status === 'playing') {
+                if (game.currentPlayer !== currentUser.uid) return;
+                if (game.board[index].revealed) return;
+                
+                processMove(index, game);
+            }
+        }
+        
+        async function processMove(index, game) {
+            const gameRef = doc(db, "artifacts", appId, "public", "data", "games", gameId);
+            const opponentId = Object.keys(game.players).find(id => id !== currentUser.uid);
+            
+            // Se não houver oponente (jogador saiu), não faz nada
+            if (!opponentId || !game.placements[opponentId]) {
+                console.log("Oponente não encontrado ou não posicionou as peças.");
+                // Poderia declarar vitória aqui, mas por enquanto só impede o erro
+                await updateDoc(gameRef, { status: 'finished', winner: currentUser.uid });
+                return;
+            }
+
+            const opponentPlacements = game.placements[opponentId];
+            
+            let newBoard = [...game.board];
+            let newPlayers = JSON.parse(JSON.stringify(game.players));
+            let gameFinished = false;
+            let winner = null;
+
+            if (opponentPlacements.treasure === index) {
+                gameFinished = true;
+                winner = currentUser.uid;
+                newBoard[index] = { revealed: true, content: 'treasure', revealedBy: currentUser.uid };
+            } 
+            else if (opponentPlacements.bombs.includes(index)) {
+                newPlayers[currentUser.uid].bombsHit++;
+                newPlayers[currentUser.uid].missesTurns = 3;
+                newBoard[index] = { revealed: true, content: 'bomb', revealedBy: currentUser.uid };
+                
+                if (newPlayers[currentUser.uid].bombsHit >= 3) {
+                    newPlayers[currentUser.uid].isEliminated = true;
+                    const opponentEliminated = newPlayers[opponentId].isEliminated;
+                    if (opponentEliminated) {
+                        gameFinished = true;
+                        winner = 'house';
+                    } else {
+                        // Oponente continua jogando, o turno já vai para ele
+                    }
+                }
+            }
+            else {
+                newBoard[index] = { revealed: true, content: 'empty-hit', revealedBy: currentUser.uid };
+            }
+
+            if (gameFinished) {
+                await updateDoc(gameRef, {
+                    board: newBoard,
+                    players: newPlayers,
+                    status: 'finished',
+                    winner: winner,
+                    currentPlayer: null
+                });
+            } else {
+                await switchTurn(game, newBoard, newPlayers);
+            }
+        }
+        
+        async function switchTurn(game, board = null, players = null) {
+            const gameRef = doc(db, "artifacts", appId, "public", "data", "games", gameId);
+            let currentPlayersState = players ? JSON.parse(JSON.stringify(players)) : JSON.parse(JSON.stringify(game.players));
+            let currentBoardState = board || game.board;
+            
+            const playerIds = Object.keys(currentPlayersState);
+            const activePlayers = playerIds.filter(id => !currentPlayersState[id].isEliminated);
+
+            if (activePlayers.length === 1) {
+                // Se só sobrou um, o turno é sempre dele
+                await updateDoc(gameRef, {
+                    board: currentBoardState,
+                    players: currentPlayersState,
+                    currentPlayer: activePlayers[0],
+                    turnStartTime: Date.now()
+                });
+                return;
+            }
+            
+            let nextPlayerId = playerIds.find(id => id !== game.currentPlayer);
+
+            // Decrementa o contador de "missesTurns" do jogador atual (que acabou de jogar)
+            if (currentPlayersState[game.currentPlayer].missesTurns > 0) {
+                 currentPlayersState[game.currentPlayer].missesTurns--;
+            }
+            
+            // Verifica se o próximo jogador deve pular a vez
+            if (currentPlayersState[nextPlayerId].missesTurns > 0) {
+                currentPlayersState[nextPlayerId].missesTurns--;
+                // O turno volta para o jogador atual
+                nextPlayerId = game.currentPlayer;
+            }
+            
+            await updateDoc(gameRef, {
+                board: currentBoardState,
+                players: currentPlayersState,
+                currentPlayer: nextPlayerId,
+                turnStartTime: Date.now()
+            });
+        }
+        
+        function showEndGameModal(game) {
+            clearInterval(turnTimerInterval);
+            modal.classList.remove('hidden');
+            if (game.winner === currentUser.uid) {
+                modalTitle.textContent = 'Vitória!';
+                modalText.textContent = 'Você encontrou o tesouro do oponente e ficou com o butim!';
+            } else if (game.winner === 'house') {
+                modalTitle.textContent = 'Empate!';
+                modalText.textContent = 'Ambos os piratas foram para o fundo do mar! A casa fica com a aposta.';
+            } else {
+                modalTitle.textContent = 'Derrota!';
+                modalText.textContent = 'Seu oponente encontrou seu tesouro ou você foi eliminado.';
+            }
+        }
+
+        document.getElementById('modalButton').onclick = () => {
+            window.location.reload();
+        };
+
+    </script>
+</body>
+</html>
