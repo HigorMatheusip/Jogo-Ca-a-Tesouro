@@ -10,7 +10,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0e5d1; /* Cor de pergaminho */
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
         .font-pirate {
             font-family: 'IM Fell English SC', serif;
@@ -29,7 +29,7 @@
         }
         .board-cell {
             background-color: #1e90ff; /* Água */
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w.org/2000/svg' viewBox='0 0 80 40' width='80' height='40'%3E%3Cpath fill='%233498db' fill-opacity='0.4' d='M0 40h80v-5.5c-11.1-5.4-14.1-11.8-26.5-11.8-13.3 0-13.3 7.8-26.5 7.8S13.3 24.6 0 32V40zM0 0h80v5.5c-11.1 5.4-14.1 11.8-26.5 11.8-13.3 0-13.3-7.8-26.5-7.8S13.3 15.4 0 8V0z'%3E%3C/path%3E%3Cpath fill='%235fadcf' fill-opacity='0.4' d='M0 40h80v-2.5c-11.1-2.7-14.1-5.9-26.5-5.9-13.3 0-13.3 3.9-26.5 3.9S13.3 32.3 0 36V40zM0 0h80v2.5c-11.1 2.7-14.1 5.9-26.5 5.9-13.3 0-13.3-3.9-26.5-3.9S13.3 12.7 0 4V0z'%3E%3C/path%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 40' width='80' height='40'%3E%3Cpath fill='%233498db' fill-opacity='0.4' d='M0 40h80v-5.5c-11.1-5.4-14.1-11.8-26.5-11.8-13.3 0-13.3 7.8-26.5 7.8S13.3 24.6 0 32V40zM0 0h80v5.5c-11.1 5.4-14.1-11.8-26.5-11.8-13.3 0-13.3-7.8-26.5-7.8S13.3 15.4 0 8V0z'%3E%3C/path%3E%3Cpath fill='%235fadcf' fill-opacity='0.4' d='M0 40h80v-2.5c-11.1-2.7-14.1-5.9-26.5-5.9-13.3 0-13.3 3.9-26.5 3.9S13.3 32.3 0 36V40zM0 0h80v2.5c-11.1 2.7-14.1-5.9-26.5-5.9-13.3 0-13.3-3.9-26.5-3.9S13.3 12.7 0 4V0z'%3E%3C/path%3E%3C/svg%3E");
             border: 1px solid #00008b;
             transition: all 0.2s ease-in-out;
             cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' style='font-size: 24px;'><text y='24'>🏴‍☠️</text></svg>") 16 16, auto;
@@ -144,6 +144,11 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white py-3 px-5 rounded-lg shadow-lg transition-opacity duration-500 opacity-0 z-50 font-pirate text-lg">
+        <p id="toastText"></p>
+    </div>
+
 
     <script type="module">
         // Importações do Firebase
@@ -190,6 +195,17 @@
         let playerItems = { treasure: null, bombs: [] };
         let turnTimerInterval = null;
 
+        // --- Funções Auxiliares ---
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            toastText.textContent = message;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
         // --- Autenticação ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -203,7 +219,7 @@
 
         // Criar um novo jogo
         document.getElementById('createGameBtn').onclick = async () => {
-            if (!currentUser) return alert("Aguardando autenticação...");
+            if (!currentUser) return showToast("Aguardando autenticação...");
             
             const gameRef = await addDoc(collection(db, "artifacts", appId, "public", "data", "games"), {
                 players: {
@@ -226,7 +242,7 @@
             if (idToJoin) {
                 joinGame(idToJoin);
             } else {
-                alert("Por favor, insira um ID de jogo.");
+                showToast("Por favor, insira um ID de jogo.");
             }
         };
 
@@ -237,7 +253,7 @@
             const gameDoc = await getDoc(gameRef);
 
             if (!gameDoc.exists()) {
-                alert("Jogo não encontrado!");
+                showToast("Jogo não encontrado!");
                 return;
             }
 
@@ -248,24 +264,34 @@
                  await updateDoc(gameRef, {
                     [`players.${currentUser.uid}`]: { bombsHit: 0, isEliminated: false, missesTurns: 0, ready: false }
                 });
+                // *** CORREÇÃO APLICADA AQUI ***
+                // Se o jogo agora tem 2 jogadores, muda o status para 'placing'
+                await updateDoc(gameRef, { status: 'placing' });
             }
 
             lobby.classList.add('hidden');
             gameArea.classList.remove('hidden');
             gameIdDisplay.innerHTML = `ID do Jogo: <strong class="cursor-pointer" title="Copiar ID">${gameId}</strong>`;
             gameIdDisplay.querySelector('strong').onclick = () => {
-                navigator.clipboard.writeText(gameId).then(() => alert('ID copiado!'));
+                navigator.clipboard.writeText(gameId).then(() => showToast('ID copiado para a área de transferência!'));
             };
 
             // Observa mudanças no jogo
+            if(gameUnsubscribe) gameUnsubscribe(); // Cancela a inscrição anterior se houver
             gameUnsubscribe = onSnapshot(gameRef, (doc) => {
-                renderGame(doc.data());
+                if(doc.exists()){
+                    renderGame(doc.data());
+                } else {
+                    // O jogo foi deletado ou não existe mais
+                    showToast("O jogo foi encerrado.");
+                    window.location.reload();
+                }
             });
         }
 
         // Renderiza o estado do jogo na tela
         function renderGame(game) {
-            if (!game) return;
+            if (!game || !currentUser) return;
 
             const playerIds = Object.keys(game.players);
             const player1Id = playerIds[0];
@@ -323,9 +349,7 @@
             clearInterval(turnTimerInterval);
             timerElement.textContent = '';
 
-            // Verifica se os jogadores existem antes de prosseguir
             if (!game.players || !game.players[currentUser.uid]) {
-                // Pode acontecer um breve momento em que o jogo é renderizado antes do jogador ser adicionado
                 statusText.textContent = 'Entrando no jogo...';
                 return;
             }
@@ -386,7 +410,6 @@
                 if (cell.revealed) {
                     cellEl.classList.add('revealed');
                     let icon = '';
-                    // Mostra o ícone se o jogo acabou OU se foi você quem revelou
                     if (game.status === 'finished' || cell.revealedBy === currentUser.uid) {
                          if (cell.content === 'treasure') icon = '💰';
                          if (cell.content === 'bomb') icon = '💣';
@@ -396,7 +419,6 @@
                     cellEl.innerHTML = `<div class="icon">${icon}</div>`;
                 }
                 
-                // Adiciona ícones no final do jogo (replay)
                 if (game.status === 'finished' && game.placements) {
                     for(const playerId in game.placements) {
                         if(game.placements[playerId].treasure === index) {
@@ -421,7 +443,7 @@
                 if (!game.players[currentUser.uid] || game.players[currentUser.uid].ready) return;
                 
                 const isAlreadyPlaced = playerItems.treasure === index || playerItems.bombs.includes(index);
-                if(isAlreadyPlaced) return; // Impede colocar duas peças no mesmo lugar
+                if(isAlreadyPlaced) return;
 
                 if (placementMode === 'treasure' && treasuresToPlace > 0) {
                     playerItems.treasure = index;
@@ -466,10 +488,8 @@
             const gameRef = doc(db, "artifacts", appId, "public", "data", "games", gameId);
             const opponentId = Object.keys(game.players).find(id => id !== currentUser.uid);
             
-            // Se não houver oponente (jogador saiu), não faz nada
-            if (!opponentId || !game.placements[opponentId]) {
-                console.log("Oponente não encontrado ou não posicionou as peças.");
-                // Poderia declarar vitória aqui, mas por enquanto só impede o erro
+            if (!opponentId || !game.placements || !game.placements[opponentId]) {
+                showToast("Oponente desconectado! Você venceu!");
                 await updateDoc(gameRef, { status: 'finished', winner: currentUser.uid });
                 return;
             }
@@ -497,8 +517,6 @@
                     if (opponentEliminated) {
                         gameFinished = true;
                         winner = 'house';
-                    } else {
-                        // Oponente continua jogando, o turno já vai para ele
                     }
                 }
             }
@@ -528,7 +546,6 @@
             const activePlayers = playerIds.filter(id => !currentPlayersState[id].isEliminated);
 
             if (activePlayers.length === 1) {
-                // Se só sobrou um, o turno é sempre dele
                 await updateDoc(gameRef, {
                     board: currentBoardState,
                     players: currentPlayersState,
@@ -540,15 +557,12 @@
             
             let nextPlayerId = playerIds.find(id => id !== game.currentPlayer);
 
-            // Decrementa o contador de "missesTurns" do jogador atual (que acabou de jogar)
             if (currentPlayersState[game.currentPlayer].missesTurns > 0) {
                  currentPlayersState[game.currentPlayer].missesTurns--;
             }
             
-            // Verifica se o próximo jogador deve pular a vez
             if (currentPlayersState[nextPlayerId].missesTurns > 0) {
                 currentPlayersState[nextPlayerId].missesTurns--;
-                // O turno volta para o jogador atual
                 nextPlayerId = game.currentPlayer;
             }
             
